@@ -1,0 +1,8 @@
+{
+  "FSharp.inlayHints.typeAnnotations": false,
+  "[fsharp]": {
+    "editor.inlayHints.enabled": "off"
+  },
+  "editor.inlayHints.enabled": "offUnlessPressed",
+  "FSharp.suggestGitignore": false
+}
