@@ -50,11 +50,11 @@ function getRecommmendation(recommendation: string): Recommendation {
       return 'Accept';
     case 'R':
       return 'Reject';
-    case 'A_D':
-      return 'A_D';
-    case 'R_D':
-      return 'R_D';
-    case 'Discuss':
+    case 'D_A':
+      return 'D_A';
+    case 'D_R':
+      return 'D_R';
+    case 'D':
       return 'Discuss';
     default:
       return 'None';

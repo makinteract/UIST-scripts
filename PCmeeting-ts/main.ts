@@ -8,20 +8,32 @@ import { scoresToCSV } from './compareScores.ts';
 import { getData } from './dataprocessing.ts';
 
 const getScores = (submission: Submission) => {
-  const { pMetaScore, s1Score, e1Score, e2Score } = submission;
-  return [pMetaScore, s1Score, e1Score, e2Score];
+  const { pMetaScore, s1Score, s2Score, s3Score, e1Score, e2Score } =
+    submission;
+  const scores = [pMetaScore, s1Score, s2Score, s3Score, e1Score, e2Score];
+  return R.filter(R.compose(R.not, isNaN), scores);
 };
 
+const has3ACs = (submission: Submission) => getScores(submission).length > 4;
+const numOfACs = (submission: Submission) => getScores(submission).length - 2; // two externals
+
+const recommendAD = ({ recommendation }: Submission) =>
+  recommendation === 'D_A';
+
+const recommendRD = ({ recommendation }: Submission) =>
+  recommendation === 'D_R';
+
 const recommendDiscuss = ({ recommendation }: Submission) =>
-  recommendation === 'Discuss' ||
-  recommendation === 'A_D' ||
-  recommendation === 'R_D';
+  recommendation === 'Discuss';
 
 const recommendAccept = ({ recommendation }: Submission) =>
   recommendation === 'Accept';
 
 const recommendReject = ({ recommendation }: Submission) =>
   recommendation === 'Reject';
+
+const noRecommendation = ({ recommendation }: Submission) =>
+  recommendation === 'None';
 
 const isSplitA = ({ subcommittee }: Submission) => subcommittee === 'A';
 
@@ -100,7 +112,7 @@ scoreRanges.forEach((threshold) => {
 // Simulate numbers
 
 const accpetThreshold = 3.5;
-const rejectThreshold = 3;
+const rejectThreshold = 2.75;
 const sdThreshold = 1;
 
 const curriedHasHighSD = R.curry(hasHighStdDev);
@@ -114,9 +126,9 @@ const lowSD = R.compose(R.not, highSD);
 
 const autoAccept = R.filter(
   R.allPass([
-    compareToThreshold(accpetThreshold, R.gte as Comparator),
-    recommendAccept,
-    lowSD,
+    compareToThreshold(accpetThreshold, R.gt as Comparator),
+    // recommendAccept,
+    // lowSD,
   ]),
   valid
 );
@@ -124,14 +136,11 @@ const autoAccept = R.filter(
 const autoReject = R.filter(
   R.allPass([
     compareToThreshold(rejectThreshold, R.lt as Comparator),
-    recommendReject,
-    lowSD,
+    // recommendReject,
+    // lowSD,
   ]),
   valid
 );
-
-const autoAcceptRelaxed = R.filter(R.allPass([recommendAccept]), valid);
-const autoRejectRelaxed = R.filter(R.allPass([recommendReject]), valid);
 
 const submissionNotInList = (list: Submission[]) => {
   return (submission: Submission) => {
@@ -149,15 +158,14 @@ const excludedPapers = valid.filter(
 );
 
 const papersToDiscuss = R.filter(
-  R.anyPass([recommendDiscuss, highSD]),
+  // R.anyPass([recommendDiscuss, highSD]),
+  () => false,
   excludedPapers
 );
 
 console.log('=======Results=======');
 console.log('Auto accept:', autoAccept.length);
-console.log('Auto accept relaxed:', autoAcceptRelaxed.length);
 console.log('Auto reject:', autoReject.length);
-console.log('Auto reject relaxed:', autoRejectRelaxed.length);
 console.log('Papers to discuss:', papersToDiscuss.length);
 console.log(`\tIn split A:`, papersToDiscuss.filter(isSplitA).length);
 console.log(`\tIn split B:`, papersToDiscuss.filter(isSplitB).length);
@@ -167,3 +175,70 @@ console.log(
 );
 
 // scoresToCSV(valid);
+
+console.log('=======Check recomendations=======');
+const recA = valid.filter(recommendAccept);
+const recR = valid.filter(recommendReject);
+const recD = valid.filter(recommendDiscuss);
+const recAD = valid.filter(recommendAD);
+const recRD = valid.filter(recommendRD);
+const norec = valid.filter(noRecommendation);
+console.log(
+  `Accepted: ${recA.length} (${((100 * recA.length) / totSubmissions).toFixed(
+    2
+  )}%)`
+);
+
+console.log(
+  `R: ${recR.length} ${((100 * recR.length) / totSubmissions).toFixed(2)}%`
+);
+console.log(
+  `Discuss: ${recD.length} ${((100 * recD.length) / totSubmissions).toFixed(
+    2
+  )}%`
+);
+console.log(
+  `Discuss: ${recD.length} ${((100 * recD.length) / totSubmissions).toFixed(
+    2
+  )}%`
+);
+console.log(
+  `D_A: ${recAD.length} ${((100 * recAD.length) / totSubmissions).toFixed(2)}%`
+);
+console.log(
+  `D_R: ${recRD.length} ${((100 * recRD.length) / totSubmissions).toFixed(2)}%`
+);
+console.log(
+  `No recommendation: ${norec.length} ${(
+    (100 * norec.length) /
+    totSubmissions
+  ).toFixed(2)}%`
+);
+
+const sumRec =
+  recA.length +
+  recR.length +
+  recD.length +
+  recAD.length +
+  recRD.length +
+  norec.length;
+
+// Print final data to study
+
+console.log('=======Final data=======');
+
+function printSubmission(sub: Submission) {
+  const { id, recommendation } = sub;
+
+  const scores = getScores(sub);
+  const meanScore = mean(scores);
+  const stdev = std(scores);
+  const scoresCSV = scores.join(', ');
+  const has3AC = has3ACs(sub);
+  console.log(
+    `${id}, ${meanScore}, ${stdev}, ${recommendation}, ${has3AC}, ${scoresCSV},`
+  );
+}
+
+console.log('ID, Overall Score, StDev, Recommendation, Has 3ACs, Scores');
+// valid.forEach(printSubmission);

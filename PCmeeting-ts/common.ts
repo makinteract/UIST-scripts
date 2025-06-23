@@ -24,8 +24,8 @@ export type Submission = {
 export type Recommendation =
   | 'Accept'
   | 'Reject'
-  | 'A_D'
-  | 'R_D'
+  | 'D_A'
+  | 'D_R'
   | 'Discuss'
   | 'None';
 export type Split = 'A' | 'B';

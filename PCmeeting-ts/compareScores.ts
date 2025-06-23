@@ -3,7 +3,7 @@ import { isNaN, Submission } from './common.ts';
 
 export function scoresToCSV(data: Submission[]) {
   console.log(
-    'Meta, 1AC Personal, 2AC, 3AC, 4AC, 1EC, 2EC, 3EC, has1ACPersonal, Avg with Meta, Avg with Pscore, Avg with All'
+    'Meta, 1AC Personal, 2AC, 3AC, 4AC, 1EC, 2EC, 3EC, has1ACPersonal, Avg with Meta, Avg with Pscore, PCS average, Avg with All'
   );
   data
     .sort((a, b) => a.pMetaScore - b.pMetaScore)
