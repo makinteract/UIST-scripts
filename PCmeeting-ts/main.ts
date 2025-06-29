@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-unused-vars
 import { parse } from 'jsr:@std/csv';
 import * as path from 'jsr:@std/path';
-import { mean, median, max, min, std, print } from 'mathjs';
+import { mean, median, max, min, std, print, all } from 'mathjs';
 import * as R from 'https://deno.land/x/ramda@v0.27.2/mod.ts';
 import { Comparator, Submission, scoreRanges, printPerct } from './common.ts';
 import { scoresToCSV } from './compareScores.ts';
@@ -176,7 +176,7 @@ console.log('All done?', sumRec === totSubmissions, sumRec, totSubmissions);
 
 console.log('=======Final data=======');
 
-function printSubmission(sub: Submission) {
+function summarizeSubmission(sub: Submission) {
   const { id, recommendation } = sub;
 
   const scores = getScores(sub);
@@ -189,13 +189,16 @@ function printSubmission(sub: Submission) {
   const names = '[' + getCommitteeMembers(sub) + ']';
   const decision = isQuickReject(sub) ? 'QR' : '';
 
-  console.log(
-    `${id}, ${split}, ${names}, ${has3AC}, ${scoresCSV}, ${meanScore}, ${stdev}, ${hasHighSD}, ${recommendation}, ${decision}`
-  );
+  return `${id}, ${split}, ${names}, ${has3AC}, ${scoresCSV}, ${meanScore}, ${stdev}, ${hasHighSD}, ${recommendation}, ${decision}`;
 }
 
 console.log(
   'ID, Split, ACs, Has 3ACs, Scores, Overall Score, StDev, High SD, Recommendation, Decision'
 );
-// valid.forEach(printSubmission);
-await Deno.writeTextFile('hello.csv', [1, 2, 3].join('\n'));
+
+const reportAll = valid.map(summarizeSubmission);
+const reportA = valid.filter(isSplitA).map(summarizeSubmission);
+const reportB = valid.filter(isSplitB).map(summarizeSubmission);
+await Deno.writeTextFile('all.csv', reportAll.join('\n'));
+await Deno.writeTextFile('A.csv', reportA.join('\n'));
+await Deno.writeTextFile('B.csv', reportB.join('\n'));
