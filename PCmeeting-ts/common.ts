@@ -19,6 +19,9 @@ export type Submission = {
   e1Score: number;
   e2Score: number;
   e3Score: number;
+  s1Name: string;
+  s2Name: string;
+  s3Name: string;
 };
 
 export type Recommendation =
@@ -43,4 +46,8 @@ export const scoreRanges = [
 
 export const isNaN = (value: any) => {
   return value !== value;
+};
+
+export const printPerct = (str: string, value: number) => {
+  console.log(`${str}: ${(value * 100).toFixed(2)}%`);
 };

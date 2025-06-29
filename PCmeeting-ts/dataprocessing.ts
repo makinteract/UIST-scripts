@@ -30,6 +30,9 @@ export async function getData(filename: string): Promise<Submission[]> {
     e1Score: parseFloat(row.E1score),
     e2Score: parseFloat(row.E2score),
     e3Score: parseFloat(row.E3score),
+    s1Name: row.S1name || undefined,
+    s2Name: row.S2name || undefined,
+    s3Name: row.S3name || undefined,
   }));
 }
 

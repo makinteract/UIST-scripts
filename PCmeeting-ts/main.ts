@@ -1,9 +1,9 @@
 // deno-lint-ignore-file no-unused-vars
 import { parse } from 'jsr:@std/csv';
 import * as path from 'jsr:@std/path';
-import { mean, median, max, min, std } from 'mathjs';
+import { mean, median, max, min, std, print } from 'mathjs';
 import * as R from 'https://deno.land/x/ramda@v0.27.2/mod.ts';
-import { Comparator, Submission, scoreRanges } from './common.ts';
+import { Comparator, Submission, scoreRanges, printPerct } from './common.ts';
 import { scoresToCSV } from './compareScores.ts';
 import { getData } from './dataprocessing.ts';
 
@@ -12,6 +12,13 @@ const getScores = (submission: Submission) => {
     submission;
   const scores = [pMetaScore, s1Score, s2Score, s3Score, e1Score, e2Score];
   return R.filter(R.compose(R.not, isNaN), scores);
+};
+
+const getCommitteeMembers = (submission: Submission) => {
+  const { pName, s1Name, s2Name, s3Name } = submission;
+  return [pName, s1Name, s2Name, s3Name]
+    .filter((name) => name !== undefined)
+    .join('; ');
 };
 
 const has3ACs = (submission: Submission) => getScores(submission).length > 4;
@@ -75,19 +82,11 @@ const hasHighStdDev = (sdThreshold: number, sub: Submission) => {
 const filename = path.join('data', 'Submissions.csv');
 const rawData = await getData(filename);
 
+const totSubmissions = rawData.length;
 const qr = R.filter(isQuickReject, rawData);
 const withdraw = R.filter(isWithdraw, rawData);
 const valid = R.filter(isValidSubmission, rawData);
 const conflict = R.filter(isConflict, rawData);
-
-// Basics
-console.log('=======Basics=======');
-const totSubmissions = rawData.length;
-console.log(totSubmissions, 'submissions total');
-console.log(qr.length, 'quick reject');
-console.log(withdraw.length, 'withdrawn');
-console.log(valid.length, 'valid submissions');
-console.log(conflict.length, 'conflict submissions');
 
 // Print all scores for valid submissions
 
@@ -111,68 +110,27 @@ scoreRanges.forEach((threshold) => {
 
 // Simulate numbers
 
-const accpetThreshold = 3.5;
-const rejectThreshold = 2.75;
-const sdThreshold = 1;
-
 const curriedHasHighSD = R.curry(hasHighStdDev);
+const sdThreshold = 1;
 const highSD = curriedHasHighSD(sdThreshold);
 const lowSD = R.compose(R.not, highSD);
 
 // Compare to threshold
-// Auto-accept: above threshold AND marked as accept AND low std dev
-// Auto-reject: below threshold AND marked as reject AND low std dev
-// Papers to discuss: marked as discuss OR high std dev OR or not in auto accept/reject lists
 
-const autoAccept = R.filter(
-  R.allPass([
-    compareToThreshold(accpetThreshold, R.gt as Comparator),
-    // recommendAccept,
-    // lowSD,
-  ]),
-  valid
-);
-
-const autoReject = R.filter(
-  R.allPass([
-    compareToThreshold(rejectThreshold, R.lt as Comparator),
-    // recommendReject,
-    // lowSD,
-  ]),
-  valid
-);
+// const autoAccept = R.filter(
+//   R.allPass([
+//     // compareToThreshold(accpetThreshold, R.gt as Comparator),
+//     recommendAccept,
+//     // lowSD,
+//   ]),
+//   valid
+// );
 
 const submissionNotInList = (list: Submission[]) => {
   return (submission: Submission) => {
     return !list.some((s) => s.id === submission.id);
   };
 };
-
-// chaing multiple filters
-// const papersToDiscuss = R.filter(R.anyPass([isDiscuss, highSD]), valid).filter(
-//   submissionNotInList([...autoAccept, ...autoReject])
-// );
-
-const excludedPapers = valid.filter(
-  submissionNotInList([...autoAccept, ...autoReject])
-);
-
-const papersToDiscuss = R.filter(
-  // R.anyPass([recommendDiscuss, highSD]),
-  () => false,
-  excludedPapers
-);
-
-console.log('=======Results=======');
-console.log('Auto accept:', autoAccept.length);
-console.log('Auto reject:', autoReject.length);
-console.log('Papers to discuss:', papersToDiscuss.length);
-console.log(`\tIn split A:`, papersToDiscuss.filter(isSplitA).length);
-console.log(`\tIn split B:`, papersToDiscuss.filter(isSplitB).length);
-const sum = autoAccept.length + autoReject.length + papersToDiscuss.length;
-console.log(
-  `Total: ${sum} sum of three groups vs. ${valid.length} valid submissions`
-);
 
 // scoresToCSV(valid);
 
@@ -183,36 +141,23 @@ const recD = valid.filter(recommendDiscuss);
 const recAD = valid.filter(recommendAD);
 const recRD = valid.filter(recommendRD);
 const norec = valid.filter(noRecommendation);
-console.log(
-  `Accepted: ${recA.length} (${((100 * recA.length) / totSubmissions).toFixed(
-    2
-  )}%)`
-);
 
-console.log(
-  `R: ${recR.length} ${((100 * recR.length) / totSubmissions).toFixed(2)}%`
-);
-console.log(
-  `Discuss: ${recD.length} ${((100 * recD.length) / totSubmissions).toFixed(
-    2
-  )}%`
-);
-console.log(
-  `Discuss: ${recD.length} ${((100 * recD.length) / totSubmissions).toFixed(
-    2
-  )}%`
-);
-console.log(
-  `D_A: ${recAD.length} ${((100 * recAD.length) / totSubmissions).toFixed(2)}%`
-);
-console.log(
-  `D_R: ${recRD.length} ${((100 * recRD.length) / totSubmissions).toFixed(2)}%`
-);
-console.log(
-  `No recommendation: ${norec.length} ${(
-    (100 * norec.length) /
-    totSubmissions
-  ).toFixed(2)}%`
+console.log(totSubmissions, 'submissions total');
+console.log(qr.length, 'quick reject');
+console.log(withdraw.length, 'withdrawn');
+console.log(valid.length, 'valid submissions');
+console.log(conflict.length, 'conflict submissions');
+console.log('');
+
+printPerct(`A (${recA.length}): `, recA.length / totSubmissions);
+printPerct(`R (${recR.length}): `, recR.length / totSubmissions);
+printPerct(`D (${recD.length}): `, recD.length / totSubmissions);
+printPerct(`D_A (${recAD.length}): `, recAD.length / totSubmissions);
+printPerct(`D_R (${recRD.length}): `, recRD.length / totSubmissions);
+printPerct(`None (${norec.length}): `, norec.length / totSubmissions);
+printPerct(
+  `Excluded (${qr.length + withdraw.length}): `,
+  (qr.length + withdraw.length) / totSubmissions
 );
 
 const sumRec =
@@ -221,7 +166,11 @@ const sumRec =
   recD.length +
   recAD.length +
   recRD.length +
-  norec.length;
+  norec.length +
+  qr.length +
+  withdraw.length;
+
+console.log('All done?', sumRec === totSubmissions, sumRec, totSubmissions);
 
 // Print final data to study
 
@@ -233,12 +182,20 @@ function printSubmission(sub: Submission) {
   const scores = getScores(sub);
   const meanScore = mean(scores);
   const stdev = std(scores);
-  const scoresCSV = scores.join(', ');
+  const scoresCSV = '[' + scores.join('; ') + ']';
   const has3AC = has3ACs(sub);
+  const hasHighSD = highSD(sub);
+  const split = isSplitA(sub) ? 'Split A' : isSplitB(sub) ? 'Split B' : 'N/A';
+  const names = '[' + getCommitteeMembers(sub) + ']';
+  const decision = isQuickReject(sub) ? 'QR' : '';
+
   console.log(
-    `${id}, ${meanScore}, ${stdev}, ${recommendation}, ${has3AC}, ${scoresCSV},`
+    `${id}, ${split}, ${names}, ${has3AC}, ${scoresCSV}, ${meanScore}, ${stdev}, ${hasHighSD}, ${recommendation}, ${decision}`
   );
 }
 
-console.log('ID, Overall Score, StDev, Recommendation, Has 3ACs, Scores');
+console.log(
+  'ID, Split, ACs, Has 3ACs, Scores, Overall Score, StDev, High SD, Recommendation, Decision'
+);
 // valid.forEach(printSubmission);
+await Deno.writeTextFile('hello.csv', [1, 2, 3].join('\n'));
